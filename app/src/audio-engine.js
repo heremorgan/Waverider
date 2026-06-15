@@ -6,11 +6,11 @@ export class WaveriderAudioEngine {
     this.master = null;
     this.wasm = null;
     this.isPlaying = false;
-    this.bpm = 128;
-    this.metronomeEnabled = true;
+    this.bpm = 112;
     this.scheduler = null;
     this.nextTick = 0;
     this.tickIndex = 0;
+    this.legatoVoices = new Map();
   }
 
   async boot() {
@@ -38,15 +38,10 @@ export class WaveriderAudioEngine {
     if (this.context.state !== 'running') await this.context.resume();
   }
 
-  setBpm(bpm) {
-    this.bpm = Number(bpm);
-  }
-
-  setMetronome(enabled) {
-    this.metronomeEnabled = enabled;
-  }
+  setBpm(bpm) { this.bpm = Number(bpm); }
 
   start() {
+    this.stop();
     this.isPlaying = true;
     this.nextTick = this.context.currentTime + 0.05;
     this.tickIndex = 0;
@@ -62,8 +57,8 @@ export class WaveriderAudioEngine {
   schedule() {
     const secondsPerBeat = 60 / this.bpm;
     while (this.nextTick < this.context.currentTime + 0.15) {
-      if (this.metronomeEnabled) this.click(this.nextTick, this.tickIndex % 4 === 0);
-      this.nextTick += secondsPerBeat / 2;
+      this.click(this.nextTick, this.tickIndex % 4 === 0);
+      this.nextTick += secondsPerBeat;
       this.tickIndex += 1;
     }
   }
@@ -72,32 +67,103 @@ export class WaveriderAudioEngine {
     const oscillator = this.context.createOscillator();
     const gain = this.context.createGain();
     oscillator.frequency.value = accented ? 1320 : 880;
-    gain.gain.setValueAtTime(accented ? 0.12 : 0.07, time);
-    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+    gain.gain.setValueAtTime(accented ? 0.1 : 0.055, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.035);
     oscillator.connect(gain).connect(this.master);
     oscillator.start(time);
-    oscillator.stop(time + 0.05);
+    oscillator.stop(time + 0.04);
   }
 
-  triggerNote(note, velocity = 0.85) {
+  triggerInstrument(type, note, velocity = 0.85, legatoMs = 0) {
+    if (type === 'drums') return this.triggerDrum(note, velocity);
+    return this.triggerKeyboard(note, velocity, legatoMs);
+  }
+
+  triggerKeyboard(note, velocity = 0.85, legatoMs = 0) {
     const now = this.context.currentTime;
+    const glide = Math.max(0.003, legatoMs / 1000);
+    let voice = this.legatoVoices.get('keyboard');
+
+    if (!voice || legatoMs === 0) {
+      voice = this.createKeyboardVoice(now, velocity);
+      this.legatoVoices.set('keyboard', voice);
+    }
+
+    voice.oscillator.frequency.cancelScheduledValues(now);
+    voice.oscillator.frequency.setTargetAtTime(this.noteToFrequency(note), now, glide / 3);
+    voice.gain.gain.cancelScheduledValues(now);
+    voice.gain.gain.setTargetAtTime(velocity * 0.42, now, 0.012);
+    voice.gain.gain.setTargetAtTime(0.0001, now + 0.62, 0.18);
+    window.clearTimeout(voice.cleanup);
+    voice.cleanup = window.setTimeout(() => {
+      voice.oscillator.stop();
+      this.legatoVoices.delete('keyboard');
+    }, 1300);
+  }
+
+  createKeyboardVoice(time, velocity) {
     const oscillator = this.context.createOscillator();
     const filter = this.context.createBiquadFilter();
     const gain = this.context.createGain();
-    const frequency = this.noteToFrequency(note);
-
-    oscillator.type = note < 50 ? 'triangle' : 'sawtooth';
-    oscillator.frequency.setValueAtTime(frequency, now);
+    oscillator.type = 'sawtooth';
     filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(note < 50 ? 180 : 2400, now);
-    filter.Q.value = 6;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(velocity, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + (note < 50 ? 0.35 : 0.9));
-
+    filter.frequency.setValueAtTime(2600, time);
+    filter.Q.value = 4;
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.setTargetAtTime(velocity * 0.42, time, 0.012);
     oscillator.connect(filter).connect(gain).connect(this.master);
-    oscillator.start(now);
-    oscillator.stop(now + 1);
+    oscillator.start(time);
+    return { oscillator, gain, cleanup: null };
+  }
+
+  triggerDrum(note, velocity = 0.85) {
+    const now = this.context.currentTime;
+    if (note === 36) return this.kick(now, velocity);
+    if (note === 38 || note === 39) return this.noiseHit(now, velocity, note === 39 ? 0.16 : 0.22, note === 39 ? 1800 : 900);
+    if (note === 42 || note === 51) return this.noiseHit(now, velocity, note === 51 ? 0.42 : 0.08, note === 51 ? 5200 : 7600);
+    return this.tom(now, velocity);
+  }
+
+  kick(time, velocity) {
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(130, time);
+    oscillator.frequency.exponentialRampToValueAtTime(42, time + 0.16);
+    gain.gain.setValueAtTime(velocity, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.36);
+    oscillator.connect(gain).connect(this.master);
+    oscillator.start(time);
+    oscillator.stop(time + 0.38);
+  }
+
+  tom(time, velocity) {
+    const oscillator = this.context.createOscillator();
+    const gain = this.context.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(190, time);
+    oscillator.frequency.exponentialRampToValueAtTime(82, time + 0.24);
+    gain.gain.setValueAtTime(velocity * 0.7, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.32);
+    oscillator.connect(gain).connect(this.master);
+    oscillator.start(time);
+    oscillator.stop(time + 0.34);
+  }
+
+  noiseHit(time, velocity, decay, cutoff) {
+    const buffer = this.context.createBuffer(1, this.context.sampleRate * decay, this.context.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < data.length; index += 1) data[index] = (Math.random() * 2 - 1) * (1 - index / data.length);
+    const noise = this.context.createBufferSource();
+    const filter = this.context.createBiquadFilter();
+    const gain = this.context.createGain();
+    noise.buffer = buffer;
+    filter.type = 'highpass';
+    filter.frequency.value = cutoff;
+    gain.gain.setValueAtTime(velocity * 0.36, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + decay);
+    noise.connect(filter).connect(gain).connect(this.master);
+    noise.start(time);
   }
 
   noteToFrequency(note) {
