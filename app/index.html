@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101522" />
+    <meta name="description" content="Waverider: a free WebAssembly and PWA music production and sampling tool." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <title>Waverider DAW</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <section>
+          <p class="eyebrow">WebAssembly PWA Studio</p>
+          <h1>Waverider</h1>
+        </section>
+        <section class="transport" aria-label="Transport controls">
+          <button id="play-toggle" type="button">Play</button>
+          <button id="stop" type="button">Stop</button>
+          <label>BPM <input id="bpm" type="number" min="40" max="240" value="128" /></label>
+          <label><input id="metronome" type="checkbox" checked /> Metronome</label>
+          <output id="engine-status">Audio engine idle</output>
+        </section>
+      </header>
+
+      <section class="hero-panel">
+        <div>
+          <p class="eyebrow">Project</p>
+          <h2>Untitled Wave Session</h2>
+          <p>Create patterns, trigger sampler pads, and extend the engine toward a full DAW workflow.</p>
+        </div>
+        <div class="meter" aria-label="Master meter">
+          <span id="meter-fill"></span>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="DAW workspace">
+        <aside class="browser-panel">
+          <h2>Library</h2>
+          <button class="library-card" data-note="48">Deep Kick</button>
+          <button class="library-card" data-note="52">Velvet Bass</button>
+          <button class="library-card" data-note="57">Glass Lead</button>
+          <button class="library-card" data-note="64">Air Pad</button>
+        </aside>
+
+        <section class="arrangement">
+          <div class="timeline-header">
+            <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span>
+          </div>
+          <div id="tracks" class="tracks"></div>
+        </section>
+
+        <aside class="mixer-panel">
+          <h2>Mixer</h2>
+          <div id="mixer"></div>
+        </aside>
+      </section>
+
+      <section class="sampler-panel" aria-label="Sampler pads">
+        <h2>Sampler</h2>
+        <div id="pads" class="pad-grid"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/app.js"></script>
+  </body>
+</html>

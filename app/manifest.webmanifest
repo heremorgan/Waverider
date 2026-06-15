@@ -1,0 +1,13 @@
+{
+  "name": "Waverider DAW",
+  "short_name": "Waverider",
+  "description": "A free WebAssembly-powered music production and sampling PWA.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070a12",
+  "theme_color": "#101522",
+  "icons": [
+    { "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

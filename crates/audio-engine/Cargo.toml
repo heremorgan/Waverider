@@ -1,0 +1,9 @@
+[package]
+name = "waverider-audio-engine"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal WebAssembly DSP core for Waverider."
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
