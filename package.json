@@ -1,0 +1,10 @@
+{
+  "name": "waverider",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WebAssembly PWA framework for a free music production and sampling tool.",
+  "scripts": {
+    "serve": "./scripts/serve.sh",
+    "build:wasm": "./scripts/build-wasm.sh"
+  }
+}
